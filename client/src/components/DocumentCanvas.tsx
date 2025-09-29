@@ -13,6 +13,9 @@ import {
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { HexColorPicker } from 'react-colorful';
+import { Palette } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 interface DocumentCanvasProps {
   imageUrl: string;
@@ -26,6 +29,8 @@ interface Annotation {
   height: number;
   text: string;
   timestamp: Date;
+  color: string;
+  category: string;
 }
 
 export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
@@ -43,6 +48,7 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
   
   const stageRef = useRef<Konva.Stage>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
+  const [annotationCategory, setAnnotationCategory] = useState('general');
 
 
 
@@ -74,6 +80,9 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
       transformerRef.current.nodes([]);
     }
   }, [selectedAnnotationId]);
+
+  const [annotationColor, setAnnotationColor] = useState('#facc15'); // Default yellow
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   const handleMouseDown = (e: KonvaEventObject<MouseEvent>) => {
     // Deselect when clicking on empty area
@@ -145,20 +154,22 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
 
   const handleAddAnnotation = () => {
     if (pendingAnnotation && annotationText.trim()) {
-      const annotation: Annotation = {
-        id: uuidv4(),
-        x: pendingAnnotation.x,
-        y: pendingAnnotation.y,
-        width: pendingAnnotation.width,
-        height: pendingAnnotation.height,
-        text: annotationText,
-        timestamp: new Date()
-      };
-      
-      setAnnotations([...annotations, annotation]);
-      setShowAnnotationDialog(false);
-      setPendingAnnotation(null);
-      setSelectedTool('select');
+    const annotation: Annotation = {
+      id: uuidv4(),
+      x: pendingAnnotation.x,
+      y: pendingAnnotation.y,
+      width: pendingAnnotation.width,
+      height: pendingAnnotation.height,
+      text: annotationText,
+      timestamp: new Date(),
+      color: annotationColor, // Add this
+      category: annotationCategory
+    };
+    
+    setAnnotations([...annotations, annotation]);
+    setShowAnnotationDialog(false);
+    setPendingAnnotation(null);
+    setSelectedTool('select');
     }
   };
 
@@ -184,9 +195,9 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
     return 'default';
   };
 
-  // ... all your existing handler functions (handleZoomIn, handleZoomOut, etc.) ...
 
-  // ADD THE HOOK HERE - Right before the return statement!
+
+  // Keyboard shortcuts
   useKeyboardShortcuts({
     onSelectTool: () => setSelectedTool('select'),
     onAnnotateTool: () => setSelectedTool('annotate'),
@@ -198,6 +209,24 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
       }
     }
   });
+
+  const handleDownload = () => {
+  const stage = stageRef.current;
+  if (!stage) return;
+  
+  // Get the data URL of the canvas
+  const dataURL = stage.toDataURL({
+    pixelRatio: 2 // Higher quality
+  });
+  
+  // Create download link
+  const link = document.createElement('a');
+  link.download = `annotated-document-${Date.now()}.png`;
+  link.href = dataURL;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
   return (
     <>
@@ -230,6 +259,32 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
               <span className="text-sm">Annotate</span>
             </button>
             
+            <div className="relative">
+            <button
+              className="p-2 bg-slate-100 rounded hover:bg-slate-200 flex items-center space-x-1"
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              title="Annotation color"
+            >
+            <Palette size={18} />
+              <div 
+                className="w-4 h-4 rounded border border-slate-300" 
+                style={{ backgroundColor: annotationColor }}
+              />
+          </button>
+  
+  {showColorPicker && (
+    <div className="absolute top-12 left-0 z-50 bg-white rounded-lg shadow-lg p-3">
+      <HexColorPicker color={annotationColor} onChange={setAnnotationColor} />
+      <button
+        className="mt-2 w-full text-xs bg-slate-100 rounded py-1 hover:bg-slate-200"
+        onClick={() => setShowColorPicker(false)}
+      >
+        Close
+      </button>
+    </div>
+  )}
+</div>
+            
             <div className="h-6 w-px bg-slate-300 mx-2" />
             
             <button
@@ -253,6 +308,17 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
             >
               <RotateCcw size={18} />
             </button>
+
+            {/* Download Button */}
+<button
+  className="p-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-1"
+  onClick={handleDownload}
+  title="Download annotated document"
+>
+  <Download size={18} />
+  <span className="text-sm">Download</span>
+</button>
+
             <span className="text-sm text-slate-600 ml-2">
               {Math.round(scale * 100)}%
             </span>
@@ -264,9 +330,9 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
         </div>
 
         {/* Canvas and Annotations Panel */}
-        <div className="flex">
+        <div className="lex flex-col lg:flex-row">
           {/* Canvas */}
-          <div className="flex-1 p-4 bg-slate-50 overflow-auto max-h-[600px]">
+          <div className="flex-1 p-2 md:p-4 bg-slate-50 overflow-auto max-h-[400px] md:max-h-[600px]">
             <div style={{ cursor: getCursor() }}>
               <Stage
                 ref={stageRef}
@@ -289,30 +355,31 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
                   
                   {/* Render annotations */}
                   {annotations.map((annotation) => (
-                    <Rect
-                      key={annotation.id}
-                      id={annotation.id}
-                      x={annotation.x}
-                      y={annotation.y}
-                      width={annotation.width}
-                      height={annotation.height}
-                      stroke="#facc15"
-                      strokeWidth={2}
-                      fill="rgb(250, 204, 21, 0.3)"
-                      onClick={() => setSelectedAnnotationId(annotation.id)}
-                      onTap={() => setSelectedAnnotationId(annotation.id)}
-                      draggable={selectedTool === 'select'}
-                      onDragEnd={(e) => {
-                        const node = e.target;
-                        const updatedAnnotations = annotations.map(a => 
-                          a.id === annotation.id 
-                            ? { ...a, x: node.x(), y: node.y() }
-                            : a
-                        );
-                        setAnnotations(updatedAnnotations);
-                      }}
-                    />
-                  ))}
+  <Rect
+    key={annotation.id}
+    id={annotation.id}
+    x={annotation.x}
+    y={annotation.y}
+    width={annotation.width}
+    height={annotation.height}
+    stroke={annotation.color} // Changed
+    strokeWidth={2}
+    fill={annotation.color} // Changed
+    opacity={0.3}
+    onClick={() => setSelectedAnnotationId(annotation.id)}
+    onTap={() => setSelectedAnnotationId(annotation.id)}
+    draggable={selectedTool === 'select'}
+    onDragEnd={(e) => {
+      const node = e.target;
+      const updatedAnnotations = annotations.map(a => 
+        a.id === annotation.id 
+          ? { ...a, x: node.x(), y: node.y() }
+          : a
+      );
+      setAnnotations(updatedAnnotations);
+    }}
+  />
+))}
                   
                   {/* Drawing preview */}
                   {isDrawing && (
@@ -334,8 +401,8 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
             </div>
           </div>
 
-          {/* Annotations Sidebar */}
-          <div className="w-80 border-l bg-white p-4">
+          {/* Annotations Sidebar - hidden on mobile by default*/}
+          <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l bg-white p-4">
             <h3 className="font-semibold mb-3 text-slate-900">Annotations</h3>
             <div className="space-y-2 max-h-[500px] overflow-y-auto">
               {annotations.length === 0 ? (
@@ -357,6 +424,10 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
                       <p className="text-sm font-medium text-slate-900">
                         {annotation.text}
                       </p>
+                      {/* In the annotation card in sidebar, add after the text */}
+<span className="inline-block px-2 py-1 text-xs rounded-full bg-slate-100 text-slate-600 mt-2">
+  {annotation.category}
+</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -384,6 +455,23 @@ export default function DocumentCanvas({ imageUrl }: DocumentCanvasProps) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96">
             <h3 className="text-lg font-semibold mb-4">Add Annotation</h3>
+<div className="mb-4">
+  <label className="block text-sm font-medium text-slate-700 mb-2">
+    Category
+  </label>
+  <select
+    className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    value={annotationCategory}
+    onChange={(e) => setAnnotationCategory(e.target.value)}
+  >
+    <option value="general">General Note</option>
+    <option value="transcription">Transcription</option>
+    <option value="context">Historical Context</option>
+    <option value="question">Question</option>
+    <option value="important">Important</option>
+    <option value="translation">Translation</option>
+  </select>
+</div>
             <textarea
               className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={4}

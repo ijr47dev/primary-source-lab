@@ -18,21 +18,21 @@ export default function Home() {
     }
   };
 
-  const loadSampleDocument = () => {
-    // Load a sample historical document from the web
-    setImageUrl('https://www.archives.gov/files/historical-docs/doc-content/images/constitution-pg1-of-4-630.jpg');
-  };
+ const loadSampleDocument = () => {
+  // Using a Constitution image from Wikimedia (CORS-friendly)
+  setImageUrl('https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Bill_of_Rights_Pg1of1_AC.jpg/1280px-Bill_of_Rights_Pg1of1_AC.jpg');
+};
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="max-w-7xl mx-auto p-2 md:p-4">
       <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900">
                 Primary Source Lab
               </h1>
-              <p className="text-slate-600">
+              <p className="text-sm md:text-base text-slate-600">
                 Collaborative historical document analysis
               </p>
             </div>
@@ -63,7 +63,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
                 {/* Upload Box */}
                 <label className="cursor-pointer">
                   <input
