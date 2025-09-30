@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Document {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String       @db.Text
+  shareToken  String       @unique @default(cuid())
+  uploadedBy  String       @default("anonymous")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  annotations Annotation[]
+  
+  @@index([shareToken])
+}
+
+model Annotation {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  x          Float
+  y          Float
+  width      Float
+  height     Float
+  text       String
+  color      String    @default("#facc15")
+  category   String    @default("general")
+  author     String    @default("anonymous")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  
+  @@index([documentId])
+}
